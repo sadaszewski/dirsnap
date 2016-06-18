@@ -21,6 +21,10 @@ def create_parser():
         ' specified snapshots', nargs=2)
     parser.add_argument('--out', type=str, help='Specifies output'
         ' file name, defaults to dirsnap.out', default='dirsnap.out.gz')
+    parser.add_argument('--maxdepth', help='Limit output path depth',
+        type=int)
+    parser.add_argument('--nohidden', help='Skip hidden files and'
+        ' directories', action='store_true')
     return parser
 
 
@@ -44,7 +48,7 @@ def snap(args):
     Q = [args.snap]
     while len(Q) > 0:
         dirname = Q.pop(0)
-        st = os.stat(dirname)
+        st = os.lstat(dirname)
         if S_ISDIR(st.st_mode):
             L = sorted(os.listdir(dirname))
             L = map(lambda x: os.path.join(dirname, x), L)
@@ -91,6 +95,15 @@ class SnapReader():
         self.unread_buf.append(e)
 
 
+def output_diff(args, name, side):
+    path = name.split(os.sep)
+    if args.maxdepth is not None and len(path) > args.maxdepth + 1:
+        return
+    if args.nohidden and len(filter(lambda x: x.startswith('.'), path)) > 0:
+        return
+    print '%s %s' % (side, name)
+
+
 def comp(args):
     fin1 = SnapReader(args.compare[0])
     fin2 = SnapReader(args.compare[1])
@@ -104,22 +117,26 @@ def comp(args):
         while True:
             e2 = fin2.read()
             if e2 is None:
-                print 'L %s' % e1[2]
+                output_diff(args, e1[2], 'L')
+                # print 'L %s' % e1[2]
                 break
             elif e2[2] == e1[2]: # match
                 # print e1[2], e2[2]
                 break
             elif e2[2] < e1[2]: # only in fin2
-                print 'R %s' % e2[2]
+                # print 'R %s' % e2[2]
+                output_diff(args, e2[2], 'R')
                 pass
             else: # only in fin1
-                print 'L %s' % e1[2]
+                # print 'L %s' % e1[2]
+                output_diff(args, e1[2], 'L')
                 fin2.unread(e2)
                 break
     while True:
         e2 = fin2.read()
         if e2 is None: break
-        print 'R %s' % e2[2]
+        # print 'R %s' % e2[2]
+        output_diff(args, e2[2], 'R')
     fin1.close()
     fin2.close()
 
