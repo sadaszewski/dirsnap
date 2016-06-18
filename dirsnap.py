@@ -67,7 +67,7 @@ class SnapReader():
 
     def read(self):
         if len(self.unread_buf) > 0:
-            return self.unread_buf.pop(0)
+            return self.unread_buf.pop()
         line = self.f.readline()
         if line == '':
             return None
