@@ -15,6 +15,8 @@ import gzip
 
 def create_parser():
     parser = ArgumentParser()
+    parser.add_argument('--lst', type=str, help='List contents of'
+        ' existing snapshot')
     parser.add_argument('--snap', type=str, help='Create snapshot of'
         ' specified directory tree')
     parser.add_argument('--compare', type=str, help='Compare two'
@@ -31,15 +33,25 @@ def create_parser():
 def main():
     parser = create_parser()
     args = parser.parse_args()
-    if not ((args.snap is None) ^ (args.compare is None)):
+    if not ((args.lst is not None) ^ (args.snap is not None) ^ (args.compare is not None)):
         sys.stderr.write('Either --snap or --compare has to be'
             ' specified\n')
         return
 
-    if args.snap is not None:
+    if args.lst is not None:
+        lst(args)
+    elif args.snap is not None:
         snap(args)
     else:
         comp(args)
+
+
+def lst(args):
+    reader = SnapReader(args.lst)
+    while True:
+        e = reader.read()
+        if e is None: break
+        output_diff(args, e[2], '%s %d' % (e[0], e[1]))
 
 
 def snap(args):
