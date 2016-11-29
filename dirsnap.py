@@ -22,11 +22,17 @@ def create_parser():
     parser.add_argument('--compare', type=str, help='Compare two'
         ' specified snapshots', nargs=2)
     parser.add_argument('--out', type=str, help='Specifies output'
-        ' file name, defaults to dirsnap.out', default='dirsnap.out.gz')
+        ' file name, defaults to dirsnap.out.gz', default='dirsnap.out.gz')
     parser.add_argument('--maxdepth', help='Limit output path depth',
         type=int)
     parser.add_argument('--nohidden', help='Skip hidden files and'
         ' directories', action='store_true')
+    parser.add_argument('--strip', type=int, default=[0, 0], nargs=2,
+        help='Strip prefix containing specified number of slashes'
+        ' on respective sides from each file name in comparison mode')
+    parser.add_argument('--prefix', type=str, default='',
+        help='Use only entries starting with given prefix in'
+        ' comparison mode')
     return parser
 
 
@@ -100,7 +106,7 @@ class SnapReader():
             name = os.path.join(self.stack[-1][1], name)
         if typ == 'D':
             self.stack.append([sz, name])
-        return (typ, sz, name, n)
+        return [typ, sz, name, n]
 
     def unread(self, e):
         # self.f.seek(-e[3], 1)
@@ -116,6 +122,13 @@ def output_diff(args, name, side):
     print '%s %s' % (side, name)
 
 
+def path_manip(path, args, side):
+    strip = args.strip[0] if side == 'L' else args.strip[1]
+    path = os.path.sep.join(path.split(os.path.sep)[strip:])
+    if not path.startswith(args.prefix): path = ''
+    return path
+
+
 def comp(args):
     fin1 = SnapReader(args.compare[0])
     fin2 = SnapReader(args.compare[1])
@@ -126,9 +139,17 @@ def comp(args):
         if e1 is None: break
         # print 'e1:', e1
         # os.stat(e1[2])
+        # if : continue
+        e1[2] = path_manip(e1[2], args, 'L')
+        if e1[2] == '': continue
         while True:
             e2 = fin2.read()
-            if e2 is None:
+            if e2 is not None:
+                # if : e2[2] = ''
+                e2[2] = path_manip(e2[2], args, 'R')
+                # os.path.sep.join(e2[2].split(os.path.sep)[args.strip:])
+                # if e2[2] == '': continue
+            if e2 is None or e2[2] == '':
                 output_diff(args, e1[2], 'L')
                 # print 'L %s' % e1[2]
                 break
@@ -147,6 +168,8 @@ def comp(args):
     while True:
         e2 = fin2.read()
         if e2 is None: break
+        e2[2] = path_manip(e2[2], args, 'R')
+        if e2[2] == '': continue
         # print 'R %s' % e2[2]
         output_diff(args, e2[2], 'R')
     fin1.close()
