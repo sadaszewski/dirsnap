@@ -40,9 +40,11 @@ def main():
     parser = create_parser()
     args = parser.parse_args()
     if not ((args.lst is not None) ^ (args.snap is not None) ^ (args.compare is not None)):
-        sys.stderr.write('Either --snap or --compare has to be'
+        sys.stderr.write('Either --snap, --list or --compare has to be'
             ' specified\n')
         return
+    
+    # print args.strip
 
     if args.lst is not None:
         lst(args)
@@ -106,7 +108,7 @@ class SnapReader():
             name = os.path.join(self.stack[-1][1], name)
         if typ == 'D':
             self.stack.append([sz, name])
-        return [typ, sz, name, n]
+        return (typ, sz, name, n)
 
     def unread(self, e):
         # self.f.seek(-e[3], 1)
@@ -122,10 +124,12 @@ def output_diff(args, name, side):
     print '%s %s' % (side, name)
 
 
-def path_manip(path, args, side):
+def path_manip(in_path, args, side):
     strip = args.strip[0] if side == 'L' else args.strip[1]
-    path = os.path.sep.join(path.split(os.path.sep)[strip:])
+    path = os.path.sep.join(in_path.split(os.path.sep)[strip:])
     if not path.startswith(args.prefix): path = ''
+    # if path == '':
+        # print in_path, 'turned to empty path'
     return path
 
 
@@ -140,38 +144,38 @@ def comp(args):
         # print 'e1:', e1
         # os.stat(e1[2])
         # if : continue
-        e1[2] = path_manip(e1[2], args, 'L')
-        if e1[2] == '': continue
+        path1 = path_manip(e1[2], args, 'L')
+        if path1 == '': continue
         while True:
             e2 = fin2.read()
             if e2 is not None:
                 # if : e2[2] = ''
-                e2[2] = path_manip(e2[2], args, 'R')
+                path2 = path_manip(e2[2], args, 'R')
                 # os.path.sep.join(e2[2].split(os.path.sep)[args.strip:])
-                if e2[2] == '': continue
+                if path2 == '': continue
             if e2 is None:
-                output_diff(args, e1[2], 'L')
+                output_diff(args, path1, 'L')
                 # print 'L %s' % e1[2]
                 break
-            elif e2[2] == e1[2]: # match
+            elif path1 == path2: # match
                 # print e1[2], e2[2]
                 break
-            elif e2[2] < e1[2]: # only in fin2
+            elif path2 < path1: # only in fin2
                 # print 'R %s' % e2[2]
-                output_diff(args, e2[2], 'R')
+                output_diff(args, path2, 'R')
                 pass
             else: # only in fin1
                 # print 'L %s' % e1[2]
-                output_diff(args, e1[2], 'L')
+                output_diff(args, path1, 'L')
                 fin2.unread(e2)
                 break
     while True:
         e2 = fin2.read()
         if e2 is None: break
-        e2[2] = path_manip(e2[2], args, 'R')
-        if e2[2] == '': continue
+        path2 = path_manip(e2[2], args, 'R')
+        if path2 == '': continue
         # print 'R %s' % e2[2]
-        output_diff(args, e2[2], 'R')
+        output_diff(args, path2, 'R')
     fin1.close()
     fin2.close()
 
