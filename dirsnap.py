@@ -148,8 +148,8 @@ def comp(args):
                 # if : e2[2] = ''
                 e2[2] = path_manip(e2[2], args, 'R')
                 # os.path.sep.join(e2[2].split(os.path.sep)[args.strip:])
-                # if e2[2] == '': continue
-            if e2 is None or e2[2] == '':
+                if e2[2] == '': continue
+            if e2 is None:
                 output_diff(args, e1[2], 'L')
                 # print 'L %s' % e1[2]
                 break
